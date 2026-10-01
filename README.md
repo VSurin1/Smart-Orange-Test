@@ -1,73 +1,39 @@
-# Команды проекта
+# Імпорт заявок з CSV
 
-Все команды выполняются из корня проекта.
+Невеликий PHP-застосунок для імпорту наданого CSV-файлу з 100 000 заявок у MySQL. Сторінка за адресою `/` завантажує файл частинами по 1 МБ і записує заявки пакетами по 1000 рядків. Кожен пакет виконується окремим HTTP-запитом, тому стандартний `max_execution_time=30` не потрібно збільшувати. Після кожного пакета в базі зберігаються позиція у файлі та кількість імпортованих рядків.
 
-## Установка зависимостей
+## Запуск
 
-При первом подключении пакетов:
-
-```bash
-composer require vlucas/phpdotenv robmorgan/phinx
-```
-
-Если зависимости уже указаны в composer.json:
+Потрібні PHP 8.2+ з PDO MySQL та mbstring, MySQL і Composer.
 
 ```bash
 composer install
+cp .env-example .env
 ```
 
-Укажите параметры существующей базы MySQL в `.env`. Конфиг Phinx расположен в `kernel/Database/phinx.php`.
-
-## Миграции
-
-Выполнить все новые миграции:
+Заповніть параметри MySQL у `.env`, створіть базу, вказану в `DB_DATABASE`, і виконайте міграції:
 
 ```bash
 vendor/bin/phinx migrate -c kernel/Database/phinx.php -e development
+php -d max_execution_time=30 -S 127.0.0.1:8000 -t public
 ```
 
-Проверить статус миграций:
+Відкрийте `http://127.0.0.1:8000/`, виберіть CSV з таблиці та натисніть **«Почати імпорт»**. Для перевірки кількості записів:
 
-```bash
-vendor/bin/phinx status -c kernel/Database/phinx.php -e development
+```sql
+SELECT import_id, COUNT(*) AS rows_imported
+FROM imported_applications
+GROUP BY import_id;
 ```
 
-Создать новую миграцию (замените имя своим):
+## Структура бази
 
-```bash
-vendor/bin/phinx create AddStatusToApplications -c kernel/Database/phinx.php
-```
+- `lead_imports`: ID імпорту, ім'я та розмір файлу, завантажені байти, позиція читання CSV, кількість збережених рядків, статус і час зміни.
+- `imported_applications`: усі 15 полів вихідного CSV, ID імпорту й номер рядка. Пара `(import_id, source_row)` унікальна, тому повторний запит не створить дубль. `external_id` навмисно не унікальний: у файлі є 205 повторних ID із різним вмістом.
+- Існуюча таблиця `applications` залишена для старого формату заявок; імпорт використовує окрему таблицю.
 
-После создания заполните файл в `database/migrations/`, затем выполните команду `migrate`.
+Міграції знаходяться в `database/migrations/`. Тимчасові CSV зберігаються поза `public/` у `storage/imports/` і видаляються після завершення імпорту.
 
-Текущая миграция создания таблицы заявок уже создана:
+## Перевірка
 
-```text
-database/migrations/20261001084520_create_applications_table.php
-```
-
-Повторно создавать `CreateApplicationsTable` не нужно. Если таблица `applications` уже создана вручную, миграция её создания завершится ошибкой; сначала согласуйте состояние базы и миграций без удаления нужных данных.
-
-## Автозагрузка
-
-После изменения раздела autoload в composer.json:
-
-```bash
-composer dump-autoload
-```
-
-## Локальный запуск
-
-```bash
-php -S localhost:8000 -t public
-```
-
-В другом терминале создайте тестовую заявку:
-
-```bash
-curl -i http://localhost:8000/ \
-    --data-urlencode "name=Виктор" \
-    --data-urlencode "email=viktor@example.com"
-```
-
-Ожидаемый результат: HTTP 201 и JSON с ID новой заявки. Каждый успешный POST создаёт отдельную запись.
+Повний CSV із 100 000 рядків пройшов імпорт через локальний HTTP-сервер з `max_execution_time=30` приблизно за 10 секунд. Запит до бази підтвердив 100 000 рядків, 100 000 різних номерів рядків та 99 795 різних `external_id`.

@@ -58,7 +58,7 @@ class Router
                 JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
             );
 
-            http_response_code(201);
+            http_response_code(200);
             echo $json;
         } else {
             header('Content-Type: text/html; charset=utf-8');

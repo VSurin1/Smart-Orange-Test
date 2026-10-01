@@ -2,9 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Controllers\ApplicationController;
-use App\Models\Application;
-use App\Services\ApplicationService;
+use App\Controllers\LeadImportController;
+use App\Services\LeadImportService;
 use Dotenv\Dotenv;
 use Kernel\Database\Database;
 use Kernel\Routing\Router;
@@ -22,12 +21,10 @@ try {
     $database = new Database($config);
 
     // Создаём контроллер только при совпадении маршрута.
-    $resolveController = static function (string $class) use ($database): object {
+    $resolveController = static function (string $class) use ($database, $rootPath): object {
         return match ($class) {
-            ApplicationController::class => new ApplicationController(
-                new ApplicationService(
-                    new Application($database->connection())
-                )
+            LeadImportController::class => new LeadImportController(
+                new LeadImportService($database->connection(), $rootPath . '/storage/imports')
             ),
             default => throw new RuntimeException(
                 'Неизвестный контроллер: ' . $class
