@@ -1,0 +1,19 @@
+{
+    "name": "viktor/loc.vectacode.pp.ua",
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/",
+            "Kernel\\": "kernel/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Surin Viktor",
+            "email": "vsurin.upitel@gmail.com"
+        }
+    ],
+    "require": {
+        "vlucas/phpdotenv": "^5.7",
+        "robmorgan/phinx": "^0.16.12"
+    }
+}
